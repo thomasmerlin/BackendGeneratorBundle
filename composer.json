@@ -1,0 +1,13 @@
+{
+    "name": "floaush/backend-generator-bundle",
+    "description": "This bundle enables you to generate and manage backend like EasyAdminBundle and Sonata",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Thomas Merlin",
+            "email": "dev.thomasmerlin@gmail.com"
+        }
+    ],
+    "require": {}
+}
