@@ -1,6 +1,6 @@
 <?php
 
-namespace Floaush\Bundle\BackendGeneratorBundle;
+namespace Floaush\Bundle\BackendGenerator;
 
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
