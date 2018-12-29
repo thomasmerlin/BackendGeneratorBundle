@@ -1,10 +1,10 @@
 <?php
 
-namespace Floaush\Bundle\BackendGenerator\Command\Helper;
+namespace Floaush\Bundle\BackendGenerator\Command\Interfaces;
 
 /**
  * Interface CommandMessageStatusInterface
- * @package Floaush\Bundle\BackendGenerator\Command\Helper
+ * @package Floaush\Bundle\BackendGenerator\Command\Interfaces
  */
 interface CommandMessageStatusInterface
 {

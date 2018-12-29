@@ -15,7 +15,7 @@ trait CommandHelperTrait
      *
      * @param \Symfony\Component\Console\Output\OutputInterface $output
      * @param string                                            $line
-     * @param string $status
+     * @param string                                            $status
      */
     public function writeLine (
         OutputInterface $output,
