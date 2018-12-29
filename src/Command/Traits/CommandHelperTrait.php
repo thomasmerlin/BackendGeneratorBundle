@@ -2,6 +2,10 @@
 
 namespace Floaush\Bundle\BackendGenerator\Command\Traits;
 
+use Floaush\Bundle\BackendGenerator\Command\Interfaces\CommandMessageStatusInterface;
+use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -71,5 +75,61 @@ trait CommandHelperTrait
         return $output->writeln(
         '[' . $status . '] - ' . $line
         );
+    }
+
+    /**
+     * Writes a negative message to the console output
+     *
+     * @param \Symfony\Component\Console\Output\OutputInterface $output
+     * @param                                                   $line
+     */
+    private function writeNegativeMessage(
+        OutputInterface $output,
+        $line
+    ) {
+        $this->writeLine(
+            $output,
+            $line,
+            CommandMessageStatusInterface::ERROR_MESSAGE_STATUS
+        );
+    }
+
+    /**
+     * Writes an information message to the console output
+     *
+     * @param \Symfony\Component\Console\Output\OutputInterface $output
+     * @param                                                   $line
+     */
+    private function writeInformationMessage(
+        OutputInterface $output,
+        $line
+    ) {
+        $this->writeLine(
+            $output,
+            $line,
+            CommandMessageStatusInterface::INFO_MESSAGE_STATUS
+        );
+    }
+
+    /**
+     * @param \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand $command
+     * @param \Symfony\Component\Console\Output\OutputInterface             $output
+     *
+     * @throws \Exception
+     */
+    private function cacheClear(
+        ContainerAwareCommand $command,
+        OutputInterface $output
+    ) {
+        $command = $command->getApplication()->find('cache:clear');
+
+        $arguments = array(
+            'command' => 'cache:clear'
+        );
+
+        $greetInput = new ArrayInput($arguments);
+        $returnCode = $command->run($greetInput, $output);
+
+        var_dump($returnCode); die;
     }
 }

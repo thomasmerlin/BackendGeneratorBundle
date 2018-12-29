@@ -16,13 +16,16 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Process\Process;
 
 /**
  * Class ConfigureDatabaseCommand
  * @package Floaush\Bundle\BackendGenerator\Command
  */
-class ConfigureDatabaseCommand extends ContainerAwareCommand implements CommandMessageStatusInterface
+class ConfigureDatabaseCommand extends ContainerAwareCommand
 {
+    const PROCESS_EXECUTION_TIMEOUT = 86400;
+
     use CommandHelperTrait;
 
     /**
@@ -132,6 +135,8 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand implements CommandM
      * @param \Symfony\Component\Console\Input\InputInterface   $input
      * @param \Symfony\Component\Console\Output\OutputInterface $output
      * @param string                                            $orm
+     *
+     * @throws \Exception
      */
     private function configureOrm(
         InputInterface $input,
@@ -156,7 +161,7 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand implements CommandM
                 $orm . " ORM is found in the already registered bundles. Everything is good !",
                 CommandMessageStatusInterface::INFO_MESSAGE_STATUS
             );
-            return;
+//            return;
         }
 
         $this->writeLine(
@@ -182,13 +187,39 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand implements CommandM
         );
 
         if ($choice === false) {
-            $this->writeLine(
+            $this->writeNegativeMessage(
                 $output,
-                'Execution aborted. You wanted to use Doctrine but you do not want to install it.',
-                CommandMessageStatusInterface::ERROR_MESSAGE_STATUS
+                'Command execution aborted. You want to use ' . $orm . ' ORM but you do not want to install it'
             );
             return;
         }
 
+        $this->writeInformationMessage(
+            $output,
+            'Installation of ' . $orm . ' ORM in progress !'
+        );
+
+        $process = new Process('composer require symfony/orm-pack');
+        $process->setTimeout(self::PROCESS_EXECUTION_TIMEOUT);
+        $process->start();
+
+        foreach ($process as $type => $data) {
+            if ($process::OUT === $type) {
+                echo 'Process : ' . $data;
+            } else { // $process::ERR === $type
+                echo $data;
+            }
+        }
+
+        if ($process->isSuccessful()) {
+            echo '[OK] - La commande a été traité avec succès !';
+        } else {
+            echo '[ERROR] - La commande a echoué.';
+        }
+
+        $this->cacheClear(
+            $this,
+            $output
+        );
     }
 }
