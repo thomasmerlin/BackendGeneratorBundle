@@ -14,6 +14,7 @@ use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Process\Process;
 
 /**
@@ -23,6 +24,8 @@ use Symfony\Component\Process\Process;
 class ConfigureDatabaseCommand extends ContainerAwareCommand
 {
     const PROCESS_EXECUTION_TIMEOUT = 86400;
+    const MYSQL_RBDMS = 'MySQL';
+    const DOT_ENV_PATH = '/.env';
 
     /**
      *
@@ -60,11 +63,22 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand
             'You choose "' . $orm . '" as an ORM and "' . $rbdms . '" as the RBDMS !'
         );
 
+        $container = $this->getContainer();
+
         $consoleStyling->section('Installing & Configuring the ORM');
         $this->configureOrm(
             $output,
             $orm,
-            $consoleStyling
+            $consoleStyling,
+            $container
+        );
+
+        $consoleStyling->section('Configuring the RBDMS');
+        $this->configureRbdms(
+            $output,
+            $rbdms,
+            $consoleStyling,
+            $container
         );
     }
 
@@ -147,15 +161,16 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand
      * @param OutputInterface $output
      * @param string                                            $orm
      * @param SymfonyStyle $consoleStyling
+     * @param ContainerInterface $container
      *
      * @throws \Exception
      */
     private function configureOrm(
         OutputInterface $output,
         string $orm,
-        SymfonyStyle $consoleStyling
+        SymfonyStyle $consoleStyling,
+        ContainerInterface $container
     ) {
-        $container = $this->getContainer();
         $bundles = $container->get('kernel')->getBundles();
         $ormBundleFound = false;
 
@@ -166,7 +181,7 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand
         }
 
         if ($ormBundleFound === true) {
-            $consoleStyling->warning(
+            $consoleStyling->success(
                 'Bundle for "' . $orm . '" is already installed. Skipping to RBDMS configuration !'
             );
             return;
@@ -209,5 +224,124 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand
                 '"' . $orm . '" n\'a pas pu être installé correctement.'
             );
         }
+    }
+
+    /**
+     * @param \Symfony\Component\Console\Output\OutputInterface $output
+     * @param string                                            $rbdms
+     * @param \Symfony\Component\Console\Style\SymfonyStyle     $consoleStyling
+     * @param ContainerInterface $container
+     */
+    private function configureRbdms(
+        OutputInterface $output,
+        string $rbdms,
+        SymfonyStyle $consoleStyling,
+        ContainerInterface $container
+    ) {
+        $questions = [
+            'host' => [
+                'question' => 'What is the database host ?',
+                'defaultAnswer' => '127.0.0.1'
+            ],
+            'port' => [
+                'question' => 'What is the database port ?',
+                'defaultAnswer' => '3306'
+            ],
+            'username' => [
+                'question' => 'What is the database username ?',
+                'defaultAnswer' => 'root'
+            ],
+            'password' => [
+                'question' => 'What is the database password ?',
+                'defaultAnswer' => false
+            ],
+            'name' => [
+                'question' => 'What is the database name ?',
+                'defaultAnswer' => 'DatabaseName'
+            ]
+        ];
+
+        $databaseAnswers = [];
+
+        foreach ($questions as $subject => $question)  {
+            $databaseAnswers[$subject] = $consoleStyling->ask(
+                $question['question'],
+                $question['defaultAnswer']
+            );
+        }
+
+        if ($rbdms === self::MYSQL_RBDMS) {
+            $this->makeMySqlConfiguration(
+                $output,
+                $consoleStyling,
+                $container,
+                $rbdms,
+                $databaseAnswers
+            );
+        }
+    }
+
+    /**
+     * @param \Symfony\Component\Console\Output\OutputInterface $output
+     * @param \Symfony\Component\Console\Style\SymfonyStyle     $consoleStyling
+     * @param ContainerInterface $container
+     * @param string                                            $rbdms
+     * @param array $databaseAnswers
+     */
+    private function makeMySqlConfiguration(
+        OutputInterface $output,
+        SymfonyStyle $consoleStyling,
+        ContainerInterface $container,
+        string $rbdms,
+        array $databaseAnswers
+    ) {
+        $dir = $container->get('kernel')->getProjectDir();
+
+        if ($databaseAnswers['password'] === false) {
+            $databaseAnswers['password'] = '';
+        }
+
+        $dotEnvFile = file($dir . self::DOT_ENV_PATH);
+
+        $out = array();
+
+        foreach($dotEnvFile as $line) {
+            if(strncmp($line, 'DATABASE_URL', strlen('DATABASE_URL')) === 0) {
+                $line = 'DATABASE_URL=mysql://'
+                    . $databaseAnswers['username'] . ':' . $databaseAnswers['password'] .
+                    '@' . $databaseAnswers['host'] . ':' . $databaseAnswers['port'] .
+                    '/' . $databaseAnswers['name'];
+            }
+            $out[] = $line;
+        }
+
+        $dotEnvFileRewrited = fopen(
+            $dir . self::DOT_ENV_PATH,
+            "w+"
+        );
+        flock($dotEnvFileRewrited, LOCK_EX);
+
+        foreach($out as $line) {
+            fwrite($dotEnvFileRewrited, $line);
+        }
+
+        flock($dotEnvFileRewrited, LOCK_UN);
+        fclose($dotEnvFileRewrited);
+
+        $consoleStyling->success(
+            'Configuration of "' . $rbdms . '" successful ! Proceeding to database creation'
+        );
+
+        $process = new Process('php bin/console doctrine:database:create');
+        $process->setTimeout(self::PROCESS_EXECUTION_TIMEOUT);
+        $process->start();
+
+        foreach ($process as $type => $data) {
+            $consoleStyling->comment($data);
+        }
+
+        $consoleStyling->success(
+            'Database created ! Everything went good. Hooray !'
+        );
     }
 }
