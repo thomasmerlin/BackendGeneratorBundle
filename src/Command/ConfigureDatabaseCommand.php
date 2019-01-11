@@ -8,14 +8,12 @@
 
 namespace Floaush\Bundle\BackendGenerator\Command;
 
-
-use Floaush\Bundle\BackendGenerator\Command\Interfaces\CommandMessageStatusInterface;
 use Floaush\Bundle\BackendGenerator\Command\Traits\CommandHelperTrait;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ChoiceQuestion;
-use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Process\Process;
 
 /**
@@ -26,8 +24,6 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand
 {
     const PROCESS_EXECUTION_TIMEOUT = 86400;
 
-    use CommandHelperTrait;
-
     /**
      *
      */
@@ -35,7 +31,9 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand
     {
         $this
             ->setName('floaush:configure:database')
-            ->setDescription('Configure the database to be fully installed afterwards without effort.')
+            ->setDescription(
+                'Configure the database to be fully installed afterwards without effort.'
+            )
         ;
     }
 
@@ -44,109 +42,121 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand
      * @param \Symfony\Component\Console\Output\OutputInterface $output
      *
      * @return int|null|void
+     * @throws \Exception
      */
     protected function execute(
         InputInterface $input,
         OutputInterface $output
     ) {
-        $this->writeLine(
-            $output,
-            'Beginning of database configuration.',
-            CommandMessageStatusInterface::INFO_MESSAGE_STATUS
-        );
+        $consoleStyling = new SymfonyStyle($input, $output);
+        $consoleStyling->title("[BackOffice Generator] - Database configuration");
 
-        $configurationDesired = $this->getConfigurationDesired(
-            $input,
-            $output
-        );
+        $consoleStyling->section('Choosing the RBDMS & ORM configuration');
+        $configurationDesired = $this->getConfigurationDesired($consoleStyling);
 
         $orm = $configurationDesired['orm'];
         $rbdms = $configurationDesired['rbdms'];
-
-        $this->writeLine(
-            $output,
-            "Let's configure your database to work with '" . $orm . "' and '" . $rbdms . "'.",
-            CommandMessageStatusInterface::INFO_MESSAGE_STATUS
+        $consoleStyling->success(
+            'You choose "' . $orm . '" as an ORM and "' . $rbdms . '" as the RBDMS !'
         );
 
+        $consoleStyling->section('Installing & Configuring the ORM');
         $this->configureOrm(
-            $input,
             $output,
-            $orm
+            $orm,
+            $consoleStyling
         );
     }
 
     /**
      * Asks the developer some question to know which ORM and RDBMS he wants to use.
      *
-     * @param \Symfony\Component\Console\Input\InputInterface   $input
-     * @param \Symfony\Component\Console\Output\OutputInterface $output
+     * @param SymfonyStyle $consoleStyling
      *
      * @return array
      */
-    private function getConfigurationDesired(
-        InputInterface $input,
-        OutputInterface $output
-    ) {
-        /**
-         * @var \Symfony\Component\Console\Helper\SymfonyQuestionHelper $questionHelper
-         */
-        $questionHelper = $this->getHelper('question');
-
+    private function getConfigurationDesired(SymfonyStyle $consoleStyling) {
         $questions = [
             'orm' => [
                 'question' => 'Which ORM do you want to use for your project ?',
                 'choices' => [
                     'Doctrine'
-                ],
-                'defaultAnswer' => 0,
-                'answer' => ''
+                ]
             ],
             'rbdms' => [
                 'question' => 'Which RBDMS do you want to use for your project ?',
                 'choices' => [
                     'MySQL',
                     'PostgreSQL'
-                ],
-                'defaultAnswer' => 0,
-                'answer' => ''
+                ]
             ]
         ];
 
+        $configuration = [
+            'orm' => null,
+            'rbdms' => null
+        ];
+
         foreach ($questions as $subject => $question)  {
-            $questions[$subject]['answer'] = $questionHelper->ask(
-                $input,
-                $output,
-                new ChoiceQuestion(
-                    $question['question'],
-                    $question['choices'],
-                    $question['defaultAnswer']
-                )
+            $answers = $question['choices'];
+            $configuration[$subject] = $consoleStyling->choice(
+                $question['question'],
+                $question['choices'],
+                reset($answers)
             );
         }
 
-        return [
-            'orm' => $questions['orm']['answer'],
-            'rbdms' => $questions['rbdms']['answer']
-        ];
+        $orm = $configuration['orm'];
+        $rbdms = $configuration['rbdms'];
+
+        $table = $consoleStyling->table(
+            ['ORM', 'RBDMS'],
+            [
+                [$orm, $rbdms]
+            ]
+        );
+
+        $confirmation = $consoleStyling->confirm(
+            $table . ' Do you confirm this configuration ?',
+            true
+        );
+
+        while ($confirmation === false) {
+            $configurationDesired = $this->getConfigurationDesired($consoleStyling);
+
+            $orm = $configurationDesired['orm'];
+            $rbdms = $configurationDesired['rbdms'];
+
+            $table = $consoleStyling->table(
+                ['ORM', 'RBDMS'],
+                [
+                    [$orm, $rbdms]
+                ]
+            );
+
+            $confirmation = $consoleStyling->confirm(
+                $table . ' Do you confirm this configuration ?',
+                true
+            );
+        }
+
+        return $configuration;
     }
 
     /**
-     * @param \Symfony\Component\Console\Input\InputInterface   $input
-     * @param \Symfony\Component\Console\Output\OutputInterface $output
+     * @param OutputInterface $output
      * @param string                                            $orm
+     * @param SymfonyStyle $consoleStyling
      *
      * @throws \Exception
      */
     private function configureOrm(
-        InputInterface $input,
         OutputInterface $output,
-        string $orm
+        string $orm,
+        SymfonyStyle $consoleStyling
     ) {
         $container = $this->getContainer();
-
         $bundles = $container->get('kernel')->getBundles();
-
         $ormBundleFound = false;
 
         foreach ($bundles as $bundle) {
@@ -156,70 +166,48 @@ class ConfigureDatabaseCommand extends ContainerAwareCommand
         }
 
         if ($ormBundleFound === true) {
-            $this->writeLine(
-                $output,
-                $orm . " ORM is found in the already registered bundles. Everything is good !",
-                CommandMessageStatusInterface::INFO_MESSAGE_STATUS
-            );
-//            return;
-        }
-
-        $this->writeLine(
-            $output,
-            $orm . " ORM is not found in the already registered bundles.",
-            CommandMessageStatusInterface::INFO_MESSAGE_STATUS
-        );
-
-        /**
-         * @var \Symfony\Component\Console\Helper\SymfonyQuestionHelper $questionHelper
-         */
-        $questionHelper = $this->getHelper('question');
-
-        $question = new ConfirmationQuestion(
-            'Do you want to install the Doctrine ORM Bundle ?',
-            true
-        );
-
-        $choice = $questionHelper->ask(
-            $input,
-            $output,
-            $question
-        );
-
-        if ($choice === false) {
-            $this->writeNegativeMessage(
-                $output,
-                'Command execution aborted. You want to use ' . $orm . ' ORM but you do not want to install it'
+            $consoleStyling->warning(
+                'Bundle for "' . $orm . '" is already installed. Skipping to RBDMS configuration !'
             );
             return;
         }
 
-        $this->writeInformationMessage(
-            $output,
-            'Installation of ' . $orm . ' ORM in progress !'
+        $consoleStyling->success(
+            '"' . $orm . '" is not found in the already registered bundles.'
         );
 
-        $process = new Process('composer require symfony/orm-pack');
+        $consoleStyling->block(
+            'Installation of "' . $orm . '" ORM in progress.'
+        );
+
+        $process = new Process('composer require orm');
         $process->setTimeout(self::PROCESS_EXECUTION_TIMEOUT);
         $process->start();
 
+        $progressBar = new ProgressBar(
+            $output,
+            39
+        );
+        $progressBar->setFormat(
+            '%current%/%max% [%bar%] %percent:3s%%  %estimated:-6s%'
+        );
+        $progressBar->setBarWidth($progressBar->getMaxSteps());
+        $progressBar->setBarCharacter('<fg=green>⚬</>');
+        $progressBar->setEmptyBarCharacter("<fg=red>⚬</>");
+        $progressBar->setProgressCharacter("<fg=green>➤</>");
+
         foreach ($process as $type => $data) {
-            if ($process::OUT === $type) {
-                echo 'Process : ' . $data;
-            } else { // $process::ERR === $type
-                echo $data;
-            }
+            $progressBar->advance();
         }
 
         if ($process->isSuccessful()) {
-            echo '[OK] - La commande a été traité avec succès !';
+            $consoleStyling->success(
+                '"' . $orm . '" a été installé avec succès !'
+            );
         } else {
-            echo '[ERROR] - La commande a echoué.';
+            $consoleStyling->error(
+                '"' . $orm . '" n\'a pas pu être installé correctement.'
+            );
         }
-
-        $this->cacheClear(
-            $this,
-            $output
-        );
     }
 }
