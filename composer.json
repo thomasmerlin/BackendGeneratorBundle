@@ -10,11 +10,13 @@
     }
   ],
   "require": {
-    "php": ">=7.1"
+    "php": ">=7.1",
+    "symfony/console": "^3.0|^4.0",
+    "symfony/process": "^3.0|^4.0"
   },
   "autoload": {
     "psr-4": {
-      "Floaush\\Bundle\\BackendGeneratorBundle" : "src/"
+      "Floaush\\Bundle\\BackendGeneratorBundle\\" : "src/"
     }
   }
 }
