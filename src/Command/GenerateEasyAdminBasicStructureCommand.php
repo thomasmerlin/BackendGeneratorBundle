@@ -24,7 +24,7 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
     protected function configure()
     {
         $this
-            ->setName('eab:generate:structure')
+            ->setName('bomaker:eab:init')
             ->setDescription('Generate a basic structure of Easy Admin Bundle.')
         ;
     }
