@@ -1,11 +1,17 @@
 <?php
 
-namespace Floaush\Bundle\BackendGenerator\Command\Traits;
+namespace Floaush\Bundle\BackendGenerator\Command\Helper\Traits;
 
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
-trait EasyAdminCommandHelper
+/**
+ * Trait CommandHelper
+ * @package Floaush\Bundle\BackendGenerator\Command\Helper\Traits
+ */
+trait CommandHelper
 {
     /**
      * Check if a given bundle is installed.
@@ -82,5 +88,23 @@ trait EasyAdminCommandHelper
     private function getProjectDirectory(ContainerInterface $container)
     {
         return $container->getParameter('kernel.project_dir');
+    }
+
+    /**
+     * Initialize the Symfony Style console.
+     *
+     * @param \Symfony\Component\Console\Input\InputInterface   $input
+     * @param \Symfony\Component\Console\Output\OutputInterface $output
+     *
+     * @return \Symfony\Component\Console\Style\SymfonyStyle
+     */
+    private function initSymfonyStyle(
+        InputInterface $input,
+        OutputInterface $output
+    ) {
+        return new SymfonyStyle(
+            $input,
+            $output
+        );
     }
 }

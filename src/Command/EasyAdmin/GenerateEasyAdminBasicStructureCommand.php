@@ -1,8 +1,9 @@
 <?php
 
-namespace Floaush\Bundle\BackendGenerator\Command;
+namespace Floaush\Bundle\BackendGenerator\Command\EasyAdmin;
 
-use Floaush\Bundle\BackendGenerator\Command\Traits\EasyAdminCommandHelper;
+use Floaush\Bundle\BackendGenerator\Command\Helper\ConstantHelper;
+use Floaush\Bundle\BackendGenerator\Command\Helper\Traits\CommandHelper;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -11,12 +12,13 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Yaml\Dumper;
 use Symfony\Component\Yaml\Yaml;
 
+/**
+ * Class GenerateEasyAdminBasicStructureCommand
+ * @package Floaush\Bundle\BackendGenerator\Command\EasyAdmin
+ */
 class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
 {
-    const EASY_ADMIN_BUNDLE_NAME = 'EasyAdminBundle';
-    const YAML_DUMPER_INLINE_MODE = 3;
-
-    use EasyAdminCommandHelper;
+    use CommandHelper;
 
     /**
      * Configuration of the command
@@ -41,18 +43,18 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
         InputInterface $input,
         OutputInterface $output
     ) {
-        $symfonyStyle = new SymfonyStyle(
+        $symfonyStyle = $this->initSymfonyStyle(
             $input,
             $output
         );
 
-        $this->isBundleInstalled(
-            $this->getContainer(),
-            $symfonyStyle,
-            self::EASY_ADMIN_BUNDLE_NAME
-        );
-
         $container = $this->getContainer();
+
+        $this->isBundleInstalled(
+            $container,
+            $symfonyStyle,
+            ConstantHelper::EASY_ADMIN_BUNDLE_NAME
+        );
 
         $this->generateDesignFile(
             $symfonyStyle,
@@ -99,7 +101,7 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
             $dumper = new Dumper();
             $yaml = $dumper->dump(
                 $yamlContent,
-                self::YAML_DUMPER_INLINE_MODE
+                ConstantHelper::YAML_DUMPER_INLINE_MODE
             );
 
             $projectDirectory = $this->getProjectDirectory($container);
@@ -137,7 +139,7 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
 
             $yaml = Yaml::dump(
                 $yamlContent,
-                self::YAML_DUMPER_INLINE_MODE
+                ConstantHelper::YAML_DUMPER_INLINE_MODE
             );
 
             $projectDirectory = $this->getProjectDirectory($container);
@@ -209,7 +211,7 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
 
         $yaml = Yaml::dump(
             $array,
-            self::YAML_DUMPER_INLINE_MODE
+            ConstantHelper::YAML_DUMPER_INLINE_MODE
         );
 
         file_put_contents(
