@@ -89,15 +89,22 @@ class AddItemCommand extends Command
             $output
         );
 
-//        var_dump($this->easyAdminConfigManager->getBackendConfig()); die;
+        $this->checkRequirements($symfonyStyle);
+        $this->addBackofficeItem($symfonyStyle);
+    }
 
+    /**
+     * Check if all the requirements are "OK" to execute the command.
+     *
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $symfonyStyle
+     */
+    private function checkRequirements(SymfonyStyle $symfonyStyle)
+    {
         $this->isBundleInstalled(
             $this->kernel,
             $symfonyStyle,
             ConstantHelper::EASY_ADMIN_BUNDLE_NAME
         );
-
-        $this->addBackofficeItem($symfonyStyle);
     }
 
     /**

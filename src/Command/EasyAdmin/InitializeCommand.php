@@ -64,25 +64,19 @@ class InitializeCommand extends Command
             $output
         );
 
-        $this->checkRequirements(
-            $this->kernel,
-            $symfonyStyle
-        );
+        $this->checkRequirements($symfonyStyle);
         $this->generateStructure($symfonyStyle);
     }
 
     /**
      * Check if all the requirements are "OK" to execute the command.
      *
-     * @param \Symfony\Component\HttpKernel\Kernel          $kernel
      * @param \Symfony\Component\Console\Style\SymfonyStyle $symfonyStyle
      */
-    private function checkRequirements(
-        Kernel $kernel,
-        SymfonyStyle $symfonyStyle
-    ) {
+    private function checkRequirements(SymfonyStyle $symfonyStyle)
+    {
         $this->isBundleInstalled(
-            $kernel,
+            $this->kernel,
             $symfonyStyle,
             ConstantHelper::EASY_ADMIN_BUNDLE_NAME
         );
