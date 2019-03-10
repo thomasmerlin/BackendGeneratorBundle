@@ -4,21 +4,40 @@ namespace Floaush\Bundle\BackendGenerator\Command\EasyAdmin;
 
 use Floaush\Bundle\BackendGenerator\Command\Helper\ConstantHelper;
 use Floaush\Bundle\BackendGenerator\Command\Helper\Traits\CommandHelper;
-use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpKernel\Kernel;
+use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Yaml\Dumper;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Class GenerateEasyAdminBasicStructureCommand
+ * Class InitializeCommand
  * @package Floaush\Bundle\BackendGenerator\Command\EasyAdmin
  */
-class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
+class InitializeCommand extends Command
 {
     use CommandHelper;
+
+    /**
+     * @var Kernel $kernel
+     */
+    private $kernel;
+
+    /**
+     * InitializeCommand constructor.
+     *
+     * @param \Symfony\Component\HttpKernel\Kernel $kernel
+     */
+    public function __construct(Kernel $kernel)
+    {
+        $this->kernel = $kernel;
+
+        parent::__construct();
+    }
 
     /**
      * Configuration of the command
@@ -48,29 +67,56 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
             $output
         );
 
-        $container = $this->getContainer();
+        $this->checkRequirements(
+            $this->kernel,
+            $symfonyStyle
+        );
+        $this->generateStructure($symfonyStyle);
+    }
 
+    /**
+     * Check if all the requirements are "OK" to execute the command.
+     *
+     * @param \Symfony\Component\HttpKernel\Kernel          $kernel
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $symfonyStyle
+     */
+    private function checkRequirements(
+        Kernel $kernel,
+        SymfonyStyle $symfonyStyle
+    ) {
         $this->isBundleInstalled(
-            $container,
+            $kernel,
             $symfonyStyle,
             ConstantHelper::EASY_ADMIN_BUNDLE_NAME
         );
+    }
+
+    /**
+     * Generates the minimal structure for Easy Admin Bundle.
+     * (Note : This structure is taken from the official Easy Admin Demo Github repository.)
+     * @see https://github.com/javiereguiluz/easy-admin-demo
+     *
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $symfonyStyle
+     */
+    private function generateStructure(SymfonyStyle $symfonyStyle)
+    {
+        $projectDirectory = $this->kernel->getProjectDir();
 
         $this->generateDesignFile(
             $symfonyStyle,
-            $container
+            $projectDirectory
         );
         $this->generateMenuFile(
             $symfonyStyle,
-            $container
+            $projectDirectory
         );
         $this->createEntitiesDirectory(
             $symfonyStyle,
-            $container
+            $projectDirectory
         );
         $this->importEasyAdminResource(
             $symfonyStyle,
-            $container
+            $projectDirectory
         );
     }
 
@@ -78,11 +124,11 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
      * Generate the main design file.
      *
      * @param \Symfony\Component\Console\Style\SymfonyStyle             $symfonyStyle
-     * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
+     * @param string $projectDirectory
      */
     private function generateDesignFile(
         SymfonyStyle $symfonyStyle,
-        ContainerInterface $container
+        string $projectDirectory
     ) {
         try {
             $yamlContent = [
@@ -98,13 +144,10 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
                 $yamlContent['easy_admin']['site_name']
             );
 
-            $dumper = new Dumper();
-            $yaml = $dumper->dump(
+            $yaml = Yaml::dump(
                 $yamlContent,
                 ConstantHelper::YAML_DUMPER_INLINE_MODE
             );
-
-            $projectDirectory = $this->getProjectDirectory($container);
 
             $this->generateFile(
                 $symfonyStyle,
@@ -122,11 +165,11 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
      * Generate the menu file.
      *
      * @param \Symfony\Component\Console\Style\SymfonyStyle             $symfonyStyle
-     * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
+     * @param string $projectDirectory
      */
     private function generateMenuFile(
         SymfonyStyle $symfonyStyle,
-        ContainerInterface $container
+        string $projectDirectory
     ) {
         try {
             $yamlContent = [
@@ -141,8 +184,6 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
                 $yamlContent,
                 ConstantHelper::YAML_DUMPER_INLINE_MODE
             );
-
-            $projectDirectory = $this->getProjectDirectory($container);
 
             $this->generateFile(
                 $symfonyStyle,
@@ -160,13 +201,12 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
      * Create the directory to store the entities.
      *
      * @param \Symfony\Component\Console\Style\SymfonyStyle             $symfonyStyle
-     * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
+     * @param string $projectDirectory
      */
     private function createEntitiesDirectory(
         SymfonyStyle $symfonyStyle,
-        ContainerInterface $container
+        string $projectDirectory
     ) {
-        $projectDirectory = $this->getProjectDirectory($container);
         $entitiesDirectory = $projectDirectory . '/config/packages/easy_admin/entities';
 
         if (is_dir($entitiesDirectory) === false) {
@@ -187,23 +227,15 @@ class GenerateEasyAdminBasicStructureCommand extends ContainerAwareCommand
      * Import the easy admin directory to the main easy admin file
      *
      * @param \Symfony\Component\Console\Style\SymfonyStyle             $symfonyStyle
-     * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
+     * @param string $projectDirectory
      */
     private function importEasyAdminResource(
         SymfonyStyle $symfonyStyle,
-        ContainerInterface $container
+        string $projectDirectory
     ) {
-        $projectDirectory = $this->getProjectDirectory($container);
-        $mainEasyAdminFileExist = true;
-
-        if (file_exists($projectDirectory . '/config/packages/easy_admin.yaml') === false) {
-            $mainEasyAdminFileExist = false;
-        }
-
         $array = [];
 
-
-        if ($mainEasyAdminFileExist === true) {
+        if (file_exists($projectDirectory . '/config/packages/easy_admin.yaml') === true) {
             $array = Yaml::parseFile($projectDirectory . '/config/packages/easy_admin.yaml');
         }
 

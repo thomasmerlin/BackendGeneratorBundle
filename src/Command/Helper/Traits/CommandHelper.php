@@ -2,10 +2,13 @@
 
 namespace Floaush\Bundle\BackendGenerator\Command\Helper\Traits;
 
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Trait CommandHelper
@@ -16,16 +19,16 @@ trait CommandHelper
     /**
      * Check if a given bundle is installed.
      *
-     * @param ContainerInterface $container
+     * @param KernelInterface $kernel
      * @param SymfonyStyle $symfonyStyle
      * @param string $bundleName
      */
     private function isBundleInstalled(
-        ContainerInterface $container,
+        KernelInterface $kernel,
         SymfonyStyle $symfonyStyle,
         string $bundleName
     ) {
-        $bundles = $container->get('kernel')->getBundles();
+        $bundles = $kernel->getBundles();
 
         /**
          * @var \Symfony\Component\HttpKernel\Bundle\BundleInterface $bundle
@@ -81,13 +84,13 @@ trait CommandHelper
     /**
      * Get the path of the project root directory.
      *
-     * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
+     * @param KernelInterface $kernel
      *
      * @return mixed
      */
-    private function getProjectDirectory(ContainerInterface $container)
+    private function getProjectDirectory(KernelInterface $kernel)
     {
-        return $container->getParameter('kernel.project_dir');
+        return $kernel->getRootDir();
     }
 
     /**
@@ -106,5 +109,126 @@ trait CommandHelper
             $input,
             $output
         );
+    }
+
+    /**
+     * Get the list of the registered entities.
+     *
+     * @param \Doctrine\ORM\EntityManagerInterface $entityManager
+     * @param boolean $cutClassNames
+     *
+     * @return array
+     * @throws \Doctrine\ORM\ORMException
+     */
+    private function getEntitiesList(
+        EntityManagerInterface $entityManager,
+        bool $cutClassNames = true
+    ) {
+        $entities = [];
+
+        $entitiesClassNames = $entityManager->getConfiguration()->getMetadataDriverImpl()->getAllClassNames();
+
+        foreach ($entitiesClassNames as $entityClassName) {
+            if ($cutClassNames === true) {
+                $entityClassName = $this->getClassNameWithoutPath($entityClassName);
+            }
+
+            $entities[] = $entityClassName;
+        }
+
+        return $entities;
+    }
+
+    /**
+     * Loop an array of items and list each element in a string.
+     *
+     * @param array $items
+     *
+     * @return string
+     */
+    private function getValidValuesfromArrayToString(array $items)
+    {
+        if (count($items) === 0) {
+            return "";
+        }
+
+        $text = "";
+        $index = 0;
+
+        foreach ($items as $item) {
+            $text .= '"' . $item . '"';
+            if ($index !== (count($items) - 1)) {
+                $text .= ', ';
+            }
+
+            $index++;
+        }
+
+        return $text;
+    }
+
+    /**
+     * Get the directory path where are located the entities by dumping and browing into the doctrine.yaml config file.
+     *
+     * @param ContainerInterface $container
+     *
+     * @return string
+     */
+    private function getEntityDirectoryPath(ContainerInterface $container)
+    {
+        $projectDirectory = $this->getProjectDirectory($container);
+
+        $yaml = Yaml::parseFile($projectDirectory . '/config/packages/doctrine.yaml');
+        $entityPath = $yaml['doctrine']['orm']['mappings']['App']['dir'];
+        $entityPathExploded = explode('/', $entityPath);
+
+        $entityDirectoryPath = $projectDirectory;
+
+        foreach ($entityPathExploded as $entityPathPart) {
+            if ($entityPathPart !== '%kernel.project_dir%') {
+                $entityDirectoryPath .= '/' . $entityPathPart;
+            }
+        }
+
+        return $entityDirectoryPath;
+    }
+
+    /**
+     * Get the name of the class without its path.
+     *
+     * @param string $fullDirectoryClassName
+     *
+     * @return string
+     */
+    private function getClassNameWithoutPath(string $fullDirectoryClassName): string
+    {
+        return substr(
+            $fullDirectoryClassName,
+            strrpos($fullDirectoryClassName, '\\') + 1
+        );
+    }
+
+    /**
+     * Check if the file corresponding to the given entity already exists in the backoffice.
+     *
+     * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
+     * @param string                                                    $entity
+     *
+     * @return bool
+     */
+    private function isEntityInBackoffice(
+        ContainerInterface $container,
+        string $entity
+    ): bool {
+
+        $projectDirectory = $this->getProjectDirectory($container);
+
+        $filePath = $projectDirectory . '/config/packages/easy_admin/entities/' . strtolower($entity) . '.yaml';
+
+        if (file_exists($filePath) === true) {
+            return true;
+        }
+
+        return false;
     }
 }

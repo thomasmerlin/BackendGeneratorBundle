@@ -1,0 +1,15 @@
+services:
+    bomaker.eab.init:
+        class: Floaush\Bundle\BackendGenerator\Command\EasyAdmin\InitializeCommand
+        arguments:
+            - "@kernel"
+        tags:
+            - "console.command"
+    bomaker.eab.add-item-command:
+        class: Floaush\Bundle\BackendGenerator\Command\EasyAdmin\AddItemCommand
+        arguments:
+            - "@easyadmin.config.manager"
+            - "@kernel"
+            - "@doctrine.orm.entity_manager"
+        tags:
+            - "console.command"
