@@ -8,7 +8,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\HttpKernel\Kernel;
+use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -20,16 +20,16 @@ class InitializeCommand extends Command
     use CommandHelper;
 
     /**
-     * @var Kernel $kernel
+     * @var KernelInterface $kernel
      */
     private $kernel;
 
     /**
      * InitializeCommand constructor.
      *
-     * @param \Symfony\Component\HttpKernel\Kernel $kernel
+     * @param \Symfony\Component\HttpKernel\KernelInterface $kernel
      */
-    public function __construct(Kernel $kernel)
+    public function __construct(KernelInterface $kernel)
     {
         $this->kernel = $kernel;
 

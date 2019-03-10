@@ -10,7 +10,6 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
@@ -116,26 +115,28 @@ class AddItemCommand extends Command
      */
     private function addBackofficeItem(SymfonyStyle $symfonyStyle)
     {
-        $entityClass = $this->getEntityClassDesired($symfonyStyle);
-
-
-//        $this->generateEntityBackofficeFile(
-//            $container,
-//            $symfonyStyle
-//        );
+        $projectDirectory = $this->kernel->getProjectDir();
+        $entityClass = $this->getEntityClassDesired(
+            $symfonyStyle,
+            $projectDirectory
+        );
     }
 
     /**
      * Get the entity class desired to be added in Easy Admin backoffice.
      *
      * @param \Symfony\Component\Console\Style\SymfonyStyle             $symfonyStyle
+     * @param string $projectDirectory
      *
-     * @return string --> The name of the class desired to be implemented into EasyAdmin
+     * @return array --> An array containing the namespace and the name of the class desired to be implemented into
+     * EasyAdmin
      *
      * @throws \Doctrine\ORM\ORMException
      */
-    private function getEntityClassDesired(SymfonyStyle $symfonyStyle): string
-    {
+    private function getEntityClassDesired(
+        SymfonyStyle $symfonyStyle,
+        string $projectDirectory
+    ): array {
         $entityManager = $this->entityManager;
         $entitiesName = $this->getEntitiesList($entityManager);
 
@@ -143,7 +144,6 @@ class AddItemCommand extends Command
             $symfonyStyle->error(
                 "There is no entity registered in your Symfony Application."
             );
-            exit();
         }
 
         $entity = $symfonyStyle->ask(
@@ -165,23 +165,50 @@ class AddItemCommand extends Command
             false
         );
 
-        $entityClass = "";
+        $entityInfos = [
+            'class' => null,
+            'namespace' => null
+        ];
 
         foreach ($entitiesClassName as $entityClassName) {
             if ($this->getClassNameWithoutPath($entityClassName) === $entity) {
-                $entityClass = $entityClassName;
+                $entityInfos['class'] = $entity;
+                $entityInfos['namespace'] = $entityClassName;
                 break;
             }
         }
 
-        return $entityClass;
+        $this->checkIfEntityIsInBackoffice(
+            $symfonyStyle,
+            $projectDirectory,
+            $entityInfos['class']
+        );
+
+        return $entityInfos;
     }
 
-
-    private function generateBackofficeFile(
-        ContainerInterface $container,
-        SymfonyStyle $symfonyStyle
+    /**
+     * Check if the entity is
+     *
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $symfonyStyle
+     * @param string                                        $projectDirectory
+     * @param string                                        $entity
+     */
+    private function checkIfEntityIsInBackoffice(
+        SymfonyStyle $symfonyStyle,
+        string $projectDirectory,
+        string $entity
     ) {
+        $backofficeConfiguration = $this->easyAdminConfigManager->getBackendConfig();
 
+        foreach ($backofficeConfiguration['entities'] as $entityName => $entityConfiguration) {
+            if ($entity === $entityName) {
+                $symfonyStyle->error(
+                    'Entity "' . $entity . '" is already in the list of registered entities. You can edit her configuration in "' . $projectDirectory . '/' .
+                    ConstantHelper::EASY_ADMIN_BUNDLE_CONFIGURATION_FOLDER . '/entities/' .
+                    strtolower($entity) . '.yaml".'
+                );
+            }
+        }
     }
 }

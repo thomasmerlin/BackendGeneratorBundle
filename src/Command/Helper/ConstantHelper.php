@@ -9,5 +9,6 @@ namespace Floaush\Bundle\BackendGenerator\Command\Helper;
 class ConstantHelper
 {
     const EASY_ADMIN_BUNDLE_NAME = 'EasyAdminBundle';
+    const EASY_ADMIN_BUNDLE_CONFIGURATION_FOLDER = 'config/packages/easy_admin';
     const YAML_DUMPER_INLINE_MODE = 3;
 }
