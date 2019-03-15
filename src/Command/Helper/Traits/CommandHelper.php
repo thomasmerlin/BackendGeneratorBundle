@@ -231,4 +231,33 @@ trait CommandHelper
 
         return false;
     }
+
+    /**
+     * Get the array max depth.
+     *
+     * @param array $array
+     *
+     * @return int
+     */
+    private function getArrayMaxDepth(array $array): int
+    {
+        $maxDepth = 1;
+
+        foreach ($array as $key => $value) {
+            $elementDepth = 2;
+            while (is_array($value) === true) {
+                foreach ($value as $subValue) {
+                    if (is_array($subValue) === true) {
+                        $elementDepth++;
+                        if ($elementDepth > $maxDepth) {
+                            $maxDepth = $elementDepth;
+                        }
+                    }
+                    $value = $subValue;
+                }
+            }
+        }
+
+        return $maxDepth;
+    }
 }

@@ -11,6 +11,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Class AddItemCommand
@@ -116,9 +117,15 @@ class AddItemCommand extends Command
     private function addBackofficeItem(SymfonyStyle $symfonyStyle)
     {
         $projectDirectory = $this->kernel->getProjectDir();
-        $entityClass = $this->getEntityClassDesired(
+        $entity = $this->getEntityClassDesired(
             $symfonyStyle,
             $projectDirectory
+        );
+
+        $this->generateEntityBackofficeConfiguration(
+            $symfonyStyle,
+            $projectDirectory,
+            $entity
         );
     }
 
@@ -188,7 +195,8 @@ class AddItemCommand extends Command
     }
 
     /**
-     * Check if the entity is
+     * Check if the entity is registered in Easy Admin configuration
+     * @see ConfigManager
      *
      * @param \Symfony\Component\Console\Style\SymfonyStyle $symfonyStyle
      * @param string                                        $projectDirectory
@@ -208,7 +216,43 @@ class AddItemCommand extends Command
                     ConstantHelper::EASY_ADMIN_BUNDLE_CONFIGURATION_FOLDER . '/entities/' .
                     strtolower($entity) . '.yaml".'
                 );
+                exit();
             }
         }
+    }
+
+    /**
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $symfonyStyle
+     * @param string $projectDirectory
+     * @param array $entity
+     */
+    private function generateEntityBackofficeConfiguration(
+        SymfonyStyle $symfonyStyle,
+        string $projectDirectory,
+        array $entity
+    ) {
+        $yamlContent = [
+            'easy_admin' => [
+                'entities' => [
+                    $entity['class'] => [
+                        'class' => $entity['namespace'],
+                        'title' => $entity['class']
+                    ]
+                ]
+            ]
+        ];
+
+        $yaml = Yaml::dump(
+            $yamlContent,
+            $this->getArrayMaxDepth($yamlContent)
+        );
+
+        $this->generateFile(
+            $symfonyStyle,
+            $projectDirectory,
+            '/config/packages/easy_admin/entities',
+            strtolower($entity['class']) . '.yaml',
+            $yaml
+        );
     }
 }

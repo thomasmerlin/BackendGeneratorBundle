@@ -121,35 +121,31 @@ class InitializeCommand extends Command
         SymfonyStyle $symfonyStyle,
         string $projectDirectory
     ) {
-        try {
-            $yamlContent = [
-                'easy_admin' => [
-                    'site_name' => 'My site',
-                    'design' => ['brand_color' => '#00000'],
-                    'formats' => ['datetime' => 'd/m/Y']
-                ]
-            ];
+        $yamlContent = [
+            'easy_admin' => [
+                'site_name' => 'My site',
+                'design' => ['brand_color' => '#00000'],
+                'formats' => ['datetime' => 'd/m/Y']
+            ]
+        ];
 
-            $yamlContent['easy_admin']['site_name'] = $symfonyStyle->ask(
-                'What is your site name ?',
-                $yamlContent['easy_admin']['site_name']
-            );
+        $yamlContent['easy_admin']['site_name'] = $symfonyStyle->ask(
+            'What is your site name ?',
+            $yamlContent['easy_admin']['site_name']
+        );
 
-            $yaml = Yaml::dump(
-                $yamlContent,
-                ConstantHelper::YAML_DUMPER_INLINE_MODE
-            );
+        $yaml = Yaml::dump(
+            $yamlContent,
+            $this->getArrayMaxDepth($yamlContent)
+        );
 
-            $this->generateFile(
-                $symfonyStyle,
-                $projectDirectory,
-                '/config/packages/easy_admin',
-                'design.yaml',
-                $yaml
-            );
-        } catch (\Exception $exception) {
-            $symfonyStyle->error($exception->getMessage());
-        }
+        $this->generateFile(
+            $symfonyStyle,
+            $projectDirectory,
+            '/config/packages/easy_admin',
+            'design.yaml',
+            $yaml
+        );
     }
 
     /**
@@ -162,30 +158,26 @@ class InitializeCommand extends Command
         SymfonyStyle $symfonyStyle,
         string $projectDirectory
     ) {
-        try {
-            $yamlContent = [
-                'easy_admin' => [
-                    'design' => [
-                        'menu' => ['Here insert your menu elements']
-                    ]
+        $yamlContent = [
+            'easy_admin' => [
+                'design' => [
+                    'menu' => ['Here insert your menu elements']
                 ]
-            ];
+            ]
+        ];
 
-            $yaml = Yaml::dump(
-                $yamlContent,
-                ConstantHelper::YAML_DUMPER_INLINE_MODE
-            );
+        $yaml = Yaml::dump(
+            $yamlContent,
+            $this->getArrayMaxDepth($yamlContent)
+        );
 
-            $this->generateFile(
-                $symfonyStyle,
-                $projectDirectory,
-                '/config/packages/easy_admin',
-                'menu.yaml',
-                $yaml
-            );
-        } catch (\Exception $exception) {
-            $symfonyStyle->error($exception->getMessage());
-        }
+        $this->generateFile(
+            $symfonyStyle,
+            $projectDirectory,
+            '/config/packages/easy_admin',
+            'menu.yaml',
+            $yaml
+        );
     }
 
     /**
@@ -224,17 +216,17 @@ class InitializeCommand extends Command
         SymfonyStyle $symfonyStyle,
         string $projectDirectory
     ) {
-        $array = [];
+        $yamlContent = [];
 
         if (file_exists($projectDirectory . '/config/packages/easy_admin.yaml') === true) {
-            $array = Yaml::parseFile($projectDirectory . '/config/packages/easy_admin.yaml');
+            $yamlContent = Yaml::parseFile($projectDirectory . '/config/packages/easy_admin.yaml');
         }
 
-        $array['imports']['resource'] = 'easy_admin/';
+        $yamlContent['imports']['resource'] = 'easy_admin/';
 
         $yaml = Yaml::dump(
-            $array,
-            ConstantHelper::YAML_DUMPER_INLINE_MODE
+            $yamlContent,
+            $this->getArrayMaxDepth($yamlContent)
         );
 
         file_put_contents(
