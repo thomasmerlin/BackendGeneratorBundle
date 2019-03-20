@@ -214,7 +214,7 @@ class AddItemCommand extends Command
                 $symfonyStyle->error(
                     'Entity "' . $entity . '" is already in the list of registered entities. You can edit her configuration in "' . $projectDirectory . '/' .
                     ConstantHelper::EASY_ADMIN_BUNDLE_CONFIGURATION_FOLDER . '/entities/' .
-                    strtolower($entity) . '.yaml".'
+                    $this->convertCamelCaseToLowerCase($entity) . '.yaml".'
                 );
                 exit();
             }
@@ -242,10 +242,18 @@ class AddItemCommand extends Command
             ]
         ];
 
+        $entityConfiguration = $yamlContent['easy_admin']['entities'][$entity['class']];
+
+        $entityConfiguration['list'] = $this->getListConfiguration(
+            $symfonyStyle,
+            $entity
+        );
+
         $yaml = Yaml::dump(
             $yamlContent,
             $this->getArrayMaxDepth($yamlContent)
         );
+
 
         $this->generateFile(
             $symfonyStyle,
@@ -254,5 +262,50 @@ class AddItemCommand extends Command
             strtolower($entity['class']) . '.yaml',
             $yaml
         );
+    }
+
+    /**
+     * Get the list configuration for an entity.
+     *
+     * Returns an array that will be directly inserted into full entity configuration.
+     *
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $symfonyStyle
+     * @param array                                         $entity
+     *
+     * @return array
+     */
+    private function getListConfiguration(
+        SymfonyStyle $symfonyStyle,
+        array $entity
+    ) {
+        $symfonyStyle->success('List configuration for "' . $entity['class'] . '" entity. Let\'s go !');
+
+        $listConfiguration = [];
+
+        /**
+         * - List :
+         * .. Demander les champs à afficher. Pour chaque champ :
+         * .... Le nom du champ (Puis vérifier qu'il est bien dans la liste des propriétés pour la classe)
+         * .... Est-ce que l'on ajoute des options supplémentaires ? Oui/Non
+         * .... ... Non : On redemande si il veut ajouter d'autres champs.
+         * .... ... Oui : On demande l'option à rajouter, ainsi que sa valeur
+         */
+
+
+        $property = $symfonyStyle->ask(
+            "Please enter a class' property to be displayed in the list page :  (Type enter once you have finished)",
+            null,
+            function ($answer) {
+                if ($answer === null) {
+                    return $answer;
+                }
+
+                return $answer;
+            }
+        );
+
+
+
+        return $listConfiguration;
     }
 }

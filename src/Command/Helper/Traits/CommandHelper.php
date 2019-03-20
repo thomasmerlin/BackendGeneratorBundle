@@ -209,30 +209,6 @@ trait CommandHelper
     }
 
     /**
-     * Check if the file corresponding to the given entity already exists in the backoffice.
-     *
-     * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
-     * @param string                                                    $entity
-     *
-     * @return bool
-     */
-    private function isEntityInBackoffice(
-        ContainerInterface $container,
-        string $entity
-    ): bool {
-
-        $projectDirectory = $this->getProjectDirectory($container);
-
-        $filePath = $projectDirectory . '/config/packages/easy_admin/entities/' . strtolower($entity) . '.yaml';
-
-        if (file_exists($filePath) === true) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
      * Get the array max depth.
      *
      * @param array $array
@@ -260,4 +236,40 @@ trait CommandHelper
 
         return $maxDepth;
     }
+
+    /**
+     * Converts a string from (c|C)amelCase to lower_case
+     * Examples :
+     * "Product"      --> "product"
+     * "PurchaseItem" --> "purchase_item"
+     * "userPartner"  --> "user_partner"
+     *
+     * @param string $string
+     *
+     * @return string
+     */
+    private function convertCamelCaseToLowerCase(string $string): string
+    {
+        $stringSplitted = str_split($string);
+        $stringConverted = '';
+
+        foreach ($stringSplitted as $character) {
+            if (reset($stringSplitted) === $character) {
+                $stringConverted .= strtolower($character);
+                continue;
+            }
+
+            if (preg_match('/[A-Z]/', $character) === 1) {
+                $stringConverted .= '_' . strtolower($character);
+                continue;
+            }
+
+            $stringConverted .= $character;
+        }
+
+        return $stringConverted;
+    }
+
+
+
 }
